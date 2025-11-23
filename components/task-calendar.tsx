@@ -77,6 +77,7 @@ export function TaskCalendar() {
   }
 
   const sortTasksByAI = () => {
+    // Sort tasks by importance (highest first), then by due date
     const sorted = [...tasks].sort((a, b) => {
       if (b.importance !== a.importance) {
         return b.importance - a.importance
@@ -86,7 +87,37 @@ export function TaskCalendar() {
       }
       return 0
     })
-    setTasks(sorted)
+
+    // Schedule tasks on calendar based on their priority and due dates
+    const scheduledTasks = sorted.map((task, index) => {
+      if (task.completed || task.scheduledTime) {
+        return task // Don't reschedule completed or already scheduled tasks
+      }
+
+      // Determine the target date based on due date or schedule progressively
+      let targetDate = new Date()
+
+      if (task.dueDate) {
+        // Schedule high priority tasks earlier relative to due date
+        const daysBeforeDue = Math.max(1, Math.ceil((10 - task.importance) / 2))
+        targetDate = new Date(task.dueDate)
+        targetDate.setDate(targetDate.getDate() - daysBeforeDue)
+      } else {
+        // If no due date, schedule starting from today based on index
+        targetDate.setDate(targetDate.getDate() + Math.floor(index / 3))
+      }
+
+      // Set time based on priority (high priority gets morning slots)
+      const hour = task.importance >= 8 ? 9 : task.importance >= 6 ? 13 : 15
+      targetDate.setHours(hour, 0, 0, 0)
+
+      return {
+        ...task,
+        scheduledTime: targetDate,
+      }
+    })
+
+    setTasks(scheduledTasks)
   }
 
   return (
@@ -112,7 +143,7 @@ export function TaskCalendar() {
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-primary" />
-                TaskFlow AI
+                PlanItOut
               </h1>
               <p className="text-sm text-muted-foreground">Smart task prioritization</p>
             </div>
