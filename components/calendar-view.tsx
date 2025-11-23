@@ -1,5 +1,8 @@
 "use client"
 
+import type React from "react"
+
+import { useState } from "react"
 import type { Task } from "./task-calendar"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -15,6 +18,8 @@ type CalendarViewProps = {
 }
 
 export function CalendarView({ tasks, viewMode, onUpdateTask }: CalendarViewProps) {
+  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null)
+
   const today = new Date()
   const weekStart = startOfWeek(today, { weekStartsOn: 0 })
 
@@ -23,6 +28,32 @@ export function CalendarView({ tasks, viewMode, onUpdateTask }: CalendarViewProp
     if (importance >= 6) return "border-l-warning bg-warning/5"
     if (importance >= 4) return "border-l-primary bg-primary/5"
     return "border-l-muted-foreground bg-muted/30"
+  }
+
+  const handleDragOver = (e: React.DragEvent, slotId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverSlot(slotId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverSlot(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, date: Date, hour?: number) => {
+    e.preventDefault()
+    setDragOverSlot(null)
+
+    try {
+      const taskData = JSON.parse(e.dataTransfer.getData("application/json")) as Task
+      const scheduledTime = new Date(date)
+      if (hour !== undefined) {
+        scheduledTime.setHours(hour, 0, 0, 0)
+      }
+      onUpdateTask(taskData.id, { scheduledTime })
+    } catch (error) {
+      console.error("Error dropping task:", error)
+    }
   }
 
   const hours = Array.from({ length: 14 }, (_, i) => i + 7) // 7 AM to 8 PM
@@ -61,6 +92,7 @@ export function CalendarView({ tasks, viewMode, onUpdateTask }: CalendarViewProp
 
                 <div className="space-y-16">
                   {hours.map((hour) => {
+                    const slotId = `${format(day, "yyyy-MM-dd")}-${hour}`
                     const hourTasks = tasks.filter((task) => {
                       if (!task.scheduledTime) return false
                       return (
@@ -70,7 +102,16 @@ export function CalendarView({ tasks, viewMode, onUpdateTask }: CalendarViewProp
                     })
 
                     return (
-                      <div key={hour} className="min-h-[80px] border-t border-border/50 pt-1">
+                      <div
+                        key={hour}
+                        onDragOver={(e) => handleDragOver(e, slotId)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day, hour)}
+                        className={cn(
+                          "min-h-[80px] border-t border-border/50 pt-1 transition-colors rounded-md",
+                          dragOverSlot === slotId && "bg-primary/10 border-primary",
+                        )}
+                      >
                         {hourTasks.map((task) => (
                           <Card
                             key={task.id}

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import type { Task } from "./task-calendar"
 import { Button } from "@/components/ui/button"
@@ -35,6 +37,11 @@ export function TaskSidebar({ open, tasks, onAddTask, onUpdateTask, onDeleteTask
     return "bg-muted text-muted-foreground"
   }
 
+  const handleDragStart = (e: React.DragEvent, task: Task) => {
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("application/json", JSON.stringify(task))
+  }
+
   return (
     <>
       <aside
@@ -61,14 +68,16 @@ export function TaskSidebar({ open, tasks, onAddTask, onUpdateTask, onDeleteTask
             {tasks.map((task) => (
               <div
                 key={task.id}
+                draggable={!task.completed}
+                onDragStart={(e) => handleDragStart(e, task)}
                 className={cn(
-                  "p-3 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors cursor-pointer",
+                  "p-3 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors",
+                  !task.completed && "cursor-move",
                   sortAnimating && "task-sorting",
                 )}
-                onClick={() => onUpdateTask(task.id, { completed: !task.completed })}
               >
                 <div className="flex items-start gap-3">
-                  <button className="mt-0.5">
+                  <button className="mt-0.5" onClick={() => onUpdateTask(task.id, { completed: !task.completed })}>
                     {task.completed ? (
                       <CheckCircle2 className="h-5 w-5 text-success" />
                     ) : (
